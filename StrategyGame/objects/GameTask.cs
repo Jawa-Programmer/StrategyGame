@@ -186,8 +186,9 @@ namespace StrategyGame.objects
             tasks = new Queue<GameTask>();
             tasks.Enqueue(new GoToTask(ex, item.Position));
             tasks.Enqueue(new TakeItem(ex, item));
-            tasks.Enqueue(new GoToTask(ex, 200, 200));
+            tasks.Enqueue(new GoToTask(ex, 200, 300));
             tasks.Enqueue(new DropItem(ex));
+            tasks.Enqueue(new GoToTask(ex, 200, 200));
 
         }
     }

@@ -51,8 +51,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="global.cs" />
+    <Compile Include="objects\Buildings.cs" />
     <Compile Include="objects\GameObject.cs" />
     <Compile Include="objects\GameTask.cs" />
+    <Compile Include="objects\Item.cs" />
+    <Compile Include="objects\Unit.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

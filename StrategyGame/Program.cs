@@ -14,6 +14,7 @@ namespace StrategyGame
 
         static Unit u = new Unit(200, 200);
         static RawMeat meat = new RawMeat(100, 100);
+        static CookFactory factory = new CookFactory(200, 300);
         static Task physic = new Task(() =>
         {
             Stopwatch stp = new Stopwatch();
@@ -27,6 +28,7 @@ namespace StrategyGame
                 // выполняем обработку поведения объектов, для обработки передаем прошедшее время
                 u.Update(delta);
                 meat.Update(delta);
+                factory.Update(delta);
                 /*Console.SetCursorPosition(0, 0);
                 Console.WriteLine("{0:f2}\t{1:f2}",u.X,u.Y) ;*/
                 // позволяем другим потокам делать свои делишки, всеравно 60 FPS, нет смысла обробатывать физику слишком часто
@@ -50,6 +52,8 @@ namespace StrategyGame
             };
             game.KeyUp += Game_KeyUp;
             game.Closing += (sender, e) => { global.isRuning = false; physic.Wait(); };
+            GL.Enable(EnableCap.DepthTest);
+            GL.Enable(EnableCap.Blend);
             game.RenderFrame += (sender, e) =>
             {
                 GL.ClearColor(0, 1f, 0, 1f);
@@ -57,9 +61,10 @@ namespace StrategyGame
 
                 GL.MatrixMode(MatrixMode.Projection);
                 GL.LoadIdentity();
-                GL.Ortho(0, global.WIDTH, global.HEIGHT, 0, 0, 4);
+                GL.Ortho(0, global.WIDTH, global.HEIGHT, 0, 2.1, -2.1);
                 u.Draw();
                 meat.Draw();
+                factory.Draw();
                 game.SwapBuffers();
             };
             physic.Start();
