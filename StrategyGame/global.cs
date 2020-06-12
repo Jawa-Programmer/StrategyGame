@@ -14,6 +14,7 @@ namespace StrategyGame
         /// <param name="a">вектор-слогаемое</param>
         /// <param name="b">вектор-слогаемое</param>
         /// <returns>сумма векторов</returns>
+        public float Length { get { return (float)Math.Sqrt(X * X + Y * Y); } }
         static public vector2f operator +(vector2f a, vector2f b) { return new vector2f { X = a.X + b.X, Y = a.Y + b.Y }; }
         /// <summary>
         /// оператор разности векторов. Выполняет покоординатоное вычитание векторов
@@ -53,6 +54,6 @@ namespace StrategyGame
         /// <param name="a">вектор координат первой точки</param>
         /// <param name="b">вектор координат второй точки</param>
         /// <returns>расстояние между точками</returns>
-        public static float Hypot(vector2f a, vector2f b) { return (float)Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y)); }
+        public static float Hypot(vector2f a, vector2f b) { return (a - b).Length; }
     }
 }

@@ -52,6 +52,7 @@
   <ItemGroup>
     <Compile Include="global.cs" />
     <Compile Include="objects\GameObject.cs" />
+    <Compile Include="objects\GameTask.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -17,6 +17,11 @@ namespace StrategyGame.objects
         public float X { get { return pos.X; } }
         /// <summary> Координата Y объекта </summary>
         public float Y { get { return pos.Y; } }
+        public GameObject(float x, float y)
+        {
+            pos.X = x; pos.Y = y;
+        }
+        public GameObject(vector2f ps) { pos = ps; }
         public abstract void Draw();
         /// <summary>
         /// обработка поведения объекта
@@ -25,35 +30,83 @@ namespace StrategyGame.objects
         /// <param name="delta">Время в секундах, прошедшее с прошлой итерации обновления объектов (используется для подсчета перемещения по формуле r = v * t)</param>
         public abstract void Update(float delta);
     }
-    /// <summary>класс юнита без специализации.</summary>
-    class Unit : GameObject
+    /// <summary>
+    /// абстрактный класс объекта, способного передвигаться.
+    /// </summary>
+    abstract class MoveableGameObject : GameObject
     {
-        protected GameTask activeTask;
-        /// <summary> мера сытости данного юнита. Если становится равна нулю, то юнит умирает.</summary>
-        protected float hungry = 100f;
-        /// <summary> мера сытости данного юнита (от 0f до 100f) Если становится равна нулю, то юнит умирает.</summary>
-        public float Hungry { get { return hungry; } set { hungry = Math.Min(Math.Max(0f, value), 100f); } }
         /// <summary> величина скорости</summary>
         protected float speed = 0f;
         /// <summary> величина скорости (от 0f до 50f)</summary>
         public float Speed { get { return speed; } set { speed = Math.Min(Math.Max(0f, value), 50f); } }
         /// <summary>направление движения (применение к ним hypot должно возвращать 1)</summary>
         protected vector2f direction = new vector2f { X = 1f, Y = 0f };
+
+        public MoveableGameObject(float x, float y) : base(x, y)
+        {
+        }
+
+        public MoveableGameObject(vector2f ps) : base(ps)
+        {
+        }
+
         /// <summary>
         /// Направление движения объекта.
         /// При передачи вектора направления не беспокойтесь о нормализации: она встроена в setter)))
         /// </summary>
-        public vector2f Direction { set { float norm = global.Hypot(value.X, value.Y); direction.X = value.X / norm; direction.Y = value.Y / norm; } }
+        public vector2f Direction { set { float norm = value.Length; if (norm == 0) return; direction.X = value.X / norm; direction.Y = value.Y / norm; } }
+    }
 
+    /// <summary>класс юнита без специализации.</summary>
+    class Unit : MoveableGameObject
+    {
+        protected GameTask activeTask;
+        public GameTask ActiveTask { get { return activeTask; } set { activeTask = value; } }
+        /// <summary> мера сытости данного юнита. Если становится равна нулю, то юнит умирает.</summary>
+        protected float hungry = 100f;
+        /// <summary> мера сытости данного юнита (от 0f до 100f) Если становится равна нулю, то юнит умирает.</summary>
+        public float Hungry { get { return hungry; } set { hungry = Math.Min(Math.Max(0f, value), 100f); } }
         /// <summary>радиус</summary>
         const float Radius = 5f;
         /// <summary>детализация (количество граней, достаточное, что бы многогранник выглядел круг)</summary>
         const int Details = 8;
-        public Unit(float x, float y)
+        /// <summary>
+        /// предмет, который юнит держит в данный момент
+        /// </summary>
+        protected Item takenItem;
+
+        public Unit(float x, float y) : base(x, y)
         {
-            pos.X = x; pos.Y = y;
         }
-        public Unit(vector2f ps) { pos = ps; }
+
+        /// <summary>
+        /// предмет, который юнит держит в данный момент
+        /// </summary>
+        public Item TakenItem { get { return takenItem; } }
+        /// <summary>
+        /// Занят ли сейчас юнит. True, если имеется активная задача
+        /// </summary>
+        public bool IsBusy { get { return activeTask != null; } }
+        /// <summary>
+        /// Несёт ли юнит предмет. True, если юнит несёт предмет прямо сейчас
+        /// </summary>
+        public bool IsTakedItem { get { return takenItem != null; } }
+        /// <summary>
+        /// Подобрать предмет. После выполнения этой процедуры, предмет будет закреплен за юнитом, а юнит за предметом.
+        /// В случае, если предмет или юнит уже заняты, ничего не произойдет.
+        /// </summary>
+        /// <param name="item"></param>
+        public void TakeItem(Item item)
+        {
+            if (IsTakedItem || item.IsTaken) return;
+            takenItem = item;
+            item.Take(this);
+        }
+        /// <summary>
+        /// Если юнит держал предмет, вызов этой процедуры заставит его выбросить предмет. Предмет и юнит станут свободны.
+        /// </summary>
+        public void DropItem() { if (IsTakedItem) takenItem.Drop(); takenItem = null; }
+
         public override void Draw()
         {
             if (global.Camera.X - Radius > pos.X || global.Camera.X + global.WIDTH + Radius < pos.X || global.Camera.Y - Radius > pos.Y || global.Camera.Y + global.HEIGHT + Radius < pos.Y) return;
@@ -73,127 +126,90 @@ namespace StrategyGame.objects
                 GameTask.TaskStatus status = activeTask.proceed(delta);
                 if (status == GameTask.TaskStatus.FINISHED || status == GameTask.TaskStatus.ABORTED) activeTask = null;
             }
-            pos.X += Speed * direction.X * delta;
-            pos.Y += Speed * direction.Y * delta;
+            pos.X += speed * direction.X * delta;
+            pos.Y += speed * direction.Y * delta;
         }
     }
     /// <summary>
-    /// Объект зададачи юнитов. В общем виде, задачи - список подзадач. Однако есть атомарные, неделимые задачи, которые не ссылаются на другие задачи, а манипулирую игровыми объктами напрямую (меняют их скорости и направления, и т.д.)
+    /// класс перетаскиевыемых предметов. Наследники данного класса реализуют ресурсы и материалы
     /// </summary>
-    class GameTask
+    abstract class Item : MoveableGameObject
     {
         /// <summary>
-        /// статусы задач
+        ///  Перерменная-флаг состояния. True, если предмет держит какой-либо юнит, иначе - false.
         /// </summary>
-        public enum TaskStatus
+        public bool IsTaken { get { return owner != null; } }
+        /// <summary>
+        /// Юнит, который в данный момент держит предмет
+        /// </summary>
+        protected Unit owner;
+        /// <summary>
+        /// Юнит, который в данный момент держит этот предмет
+        /// </summary>
+        public Unit Owner { get { return owner; } }
+        /// <summary>
+        /// Если предмет был свободен, после вызова этой функции его будет держать юнит. Предмет будет закреплен за юнитом.
+        /// Если предмет уже был взят другим юнитом, ничего не случится.
+        /// </summary>
+        /// <param name="owner">Юнит, который подобрал этот предмет</param>
+        public void Take(Unit owner) { if (IsTaken) return; this.owner = owner; }
+        /// <summary>
+        /// Сообщает предмету о том, что его выбросили. Предмет становится свободным и может быть снова подобран.
+        /// </summary>
+        public void Drop() { owner = null; }
+        /// <summary>
+        /// наименование предмета
+        /// </summary>
+        public static string Title { get { return "предмет"; } }
+        public Item(float x, float y) : base(x, y)
         {
-            /// <summary>Задача завершена</summary>
-            FINISHED,
-            ///<summary>Задача выполняется</summary>
-            PROCEED,
-            /// <summary>Задача прервана</summary>
-            ABORTED
-        };
-        /// <summary>
-        /// указатель на юнита, который выполняет задачу
-        /// </summary>
-        protected Unit executer;
-        /// <summary>
-        /// конструктор. Параметром передается юнит, который будет исполнять задачу
-        /// </summary>
-        /// <param name="ex">Юнит, который будет исполнять задачу</param>
-        public GameTask(Unit ex) { executer = ex; }
-        /// <summary>
-        /// список подзадач.
-        /// </summary>
-        protected Queue<GameTask> tasks;
-        /// <summary>
-        /// Метод выполнения задачи. Если задача не является атомарной, она просто передает управление текущей подзадаче и обробатывает ее ответ. Если задача атомарная, то метод манипулирует игровыми объектами напрямую. Возвращает статус задачи.
-        /// </summary>
-        /// <param name="dt">Время в секундах, прошедшее с прошлой итерации обновления объектов (используется для подсчета перемещения по формуле r = v * t)</param>
-        /// <returns>Если все подзадачи выполнены, то возвращает FINISHED, если еще есть невыполненые подзадачи, то возвращает PROCEED. Если продолжение выполнения задачи невозможно, возвращается ABORTED</returns>
-        public virtual TaskStatus proceed(float dt)
+        }
+
+        public Item(vector2f ps) : base(ps)
         {
-            if (tasks.Count > 0)
+        }
+
+        public override void Update(float delta)
+        {
+            if (IsTaken)
             {
-                GameTask ts = tasks.Peek();
-                TaskStatus status = ts.proceed(dt);
-                switch (status)
-                {
-                    case TaskStatus.FINISHED:
-                        tasks.Dequeue();
-                        break;
-                    case TaskStatus.ABORTED:
-                        tasks.Clear();
-                        return status;
-                        break;
-                }
+                vector2f dv = owner.Position - pos;
+                Direction = dv;
+                speed = Math.Max(0f, (dv.Length - 5) * 1.5f);
+                pos.X += speed * direction.X * delta;
+                pos.Y += speed * direction.Y * delta;
             }
-            else return TaskStatus.FINISHED;
-            return TaskStatus.PROCEED;
         }
     }
     /// <summary>
-    /// Класс элементарной задачи юнита: идти в позицию.
+    /// класс предмета "Сырое мясо". Используется для готовки "Жаренного мяса" на заводе
     /// </summary>
-    sealed class GoToTask : GameTask
+    class RawMeat : Item
     {
-        vector2f TARGET_POS;
         /// <summary>
-        /// Конструктор задачи. В качестве параметров передается сущность, выполняющая задачу и позиция, куда она должна прибыть.
+        /// наименование предмета
         /// </summary>
-        /// <param name="ex">юнит, выполняющий данную задачу</param>
-        /// <param name="tX">X координата целевой позиции</param>
-        /// <param name="tY">Y координата целевой позиции</param>
-        public GoToTask(Unit ex, float tX, float tY) : base(ex)
+        public static new string Title { get { return "сырое мясо"; } }
+        /// <summary>радиус</summary>
+        const float Radius = 5f;
+        public RawMeat(vector2f ps) : base(ps)
         {
-            TARGET_POS.X = tX;
-            TARGET_POS.Y = tY;
-            tasks = null;
         }
-        /// <summary>
-        /// Конструктор задачи. В качестве параметров передается сущность, выполняющая задачу и позиция, куда она должна прибыть.
-        /// </summary>
-        /// <param name="ex">юнит, выполняющий данную задачу</param>
-        /// <param name="tar">вектор с координатами целевой позиции</param>
-        public GoToTask(Unit ex, vector2f tar) : base(ex)
+
+        public RawMeat(float x, float y) : base(x, y)
         {
-            TARGET_POS = tar;
-            tasks = null;
         }
-        public override TaskStatus proceed(float dt)
+
+        public override void Draw()
         {
-            if (global.Hypot(executer.Position, TARGET_POS) <= executer.Speed * dt)
-            {
-                executer.Position = TARGET_POS;
-                executer.Speed = 0f;
-                return TaskStatus.FINISHED;
-            }
-            executer.Speed = 50f;
-            executer.Direction = TARGET_POS - executer.Position;
-            return TaskStatus.PROCEED;
+            GL.Begin(PrimitiveType.Quads);
+            GL.Color3(1f, 0.2f, 0.2f);
+            GL.Vertex2(pos.X - Radius - global.Camera.X, pos.Y - Radius - global.Camera.Y);
+            GL.Vertex2(pos.X + Radius - global.Camera.X, pos.Y - Radius - global.Camera.Y);
+            GL.Vertex2(pos.X + Radius - global.Camera.X, pos.Y + Radius - global.Camera.Y);
+            GL.Vertex2(pos.X - Radius - global.Camera.X, pos.Y + Radius - global.Camera.Y);
+            GL.End();
         }
     }
-    /// <summary>
-    /// Класс задачи юнита: идти по ломаной, заданной набором точек.
-    /// </summary>
-    sealed class GoByPathTask : GameTask
-    {
-        public GoByPathTask(Unit ex, vector2f[] pos) : base(ex)
-        {
-            tasks = new Queue<GameTask>(pos.Length);
-            for (int i = 0; i < pos.Length; i++)
-            {
-                tasks.Enqueue(new GoToTask(ex, pos[i]));
-            }
-        }
-        public GoByPathTask(Unit ex, float[] pos) : base(ex)
-        {
-            tasks = new Queue<GameTask>(pos.Length);
-            for (int i = 0; i < pos.Length - 1; i += 2)
-            {
-                tasks.Enqueue(new GoToTask(ex, pos[i], pos[i + 1]));
-            }
-        }
-    }
+
 }
