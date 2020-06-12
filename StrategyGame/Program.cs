@@ -25,12 +25,13 @@ namespace StrategyGame
                 prew = stp.ElapsedMilliseconds / 1000f;
                 // выполняем обработку поведения объектов, для обработки передаем прошедшее время
                 u.Update(delta);
-
+                Console.SetCursorPosition(0, 0);
+                Console.WriteLine("{0:f2}\t{1:f2}",u.X,u.Y) ;
                 // позволяем другим потокам делать свои делишки, всеравно 60 FPS, нет смысла обробатывать физику слишком часто
                 Thread.Sleep(10);
             }
         });
-        static GameWindow game = new GameWindow(800, 800);
+        static GameWindow game = new GameWindow(900, 600);
         [STAThread]
         static void Main(string[] args)
         {
@@ -42,9 +43,9 @@ namespace StrategyGame
 
             game.Resize += (sender, e) =>
             {
+                game.Height = game.Width * 2 / 3;
                 GL.Viewport(0, 0, game.Width, game.Height);
             };
-
             game.KeyUp += Game_KeyUp;
             game.Closing += (sender, e) => { global.isRuning = false; physic.Wait(); };
             game.RenderFrame += (sender, e) =>
