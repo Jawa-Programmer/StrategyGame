@@ -5,27 +5,6 @@ using System.Collections.Generic;
 namespace StrategyGame.objects
 {
     /// <summary>
-    /// структура двумерный вектор.
-    /// </summary>
-    struct vector2f
-    {
-        public float X, Y;
-        /// <summary>
-        /// оператор суммы векторов. Выполняет покоординатоное суммирование векторов
-        /// </summary>
-        /// <param name="a">вектор-слогаемое</param>
-        /// <param name="b">вектор-слогаемое</param>
-        /// <returns>сумма векторов</returns>
-        static public vector2f operator +(vector2f a, vector2f b) { return new vector2f { X = a.X + b.X, Y = a.Y + b.Y }; }
-        /// <summary>
-        /// оператор разности векторов. Выполняет покоординатоное вычитание векторов
-        /// </summary>
-        /// <param name="a">вектор-уменьшаемое</param>
-        /// <param name="b">вектор-вычитаемое</param>
-        /// <returns>разность векторов</returns>
-        static public vector2f operator -(vector2f a, vector2f b) { return new vector2f { X = a.X - b.X, Y = a.Y - b.Y }; }
-    }
-    /// <summary>
     /// абстрактный класс, от него наследуются все рисуемые игровые объекты
     /// </summary>
     abstract class GameObject
@@ -184,7 +163,7 @@ namespace StrategyGame.objects
         }
         public override TaskStatus proceed(float dt)
         {
-            if (global.Hypot(executer.X - TARGET_POS.X, executer.Y - TARGET_POS.Y) <= executer.Speed * dt)
+            if (global.Hypot(executer.Position, TARGET_POS) <= executer.Speed * dt)
             {
                 executer.Position = TARGET_POS;
                 executer.Speed = 0f;
@@ -196,7 +175,7 @@ namespace StrategyGame.objects
         }
     }
     /// <summary>
-    /// Класс задачи: идти по ломаной, заданной набором точек.
+    /// Класс задачи юнита: идти по ломаной, заданной набором точек.
     /// </summary>
     sealed class GoByPathTask : GameTask
     {
