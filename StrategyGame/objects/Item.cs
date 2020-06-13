@@ -43,8 +43,9 @@ namespace StrategyGame.objects
         {
         }
 
-        public override void Update(float delta)
+        public override bool Update(float delta)
         {
+            if (!isAlive) return false;
             if (IsTaken)
             {
                 vector2f dv = owner.Position - pos;
@@ -53,6 +54,7 @@ namespace StrategyGame.objects
                 pos.X += speed * direction.X * delta;
                 pos.Y += speed * direction.Y * delta;
             }
+            return isAlive;
         }
     }
     /// <summary>
@@ -109,7 +111,7 @@ namespace StrategyGame.objects
         {
             if (global.Camera.X - Radius > pos.X || global.Camera.X + global.WIDTH + Radius < pos.X || global.Camera.Y - Radius > pos.Y || global.Camera.Y + global.HEIGHT + Radius < pos.Y) return;
             GL.Begin(PrimitiveType.Triangles);
-            GL.Color3(0.7f, 0.7f, 0.1f);
+            GL.Color3(0.8f, 0.9f, 0.1f);
             GL.Vertex3(pos.X - Radius - global.Camera.X, pos.Y - Radius - global.Camera.Y, 1);
             GL.Vertex3(pos.X + Radius - global.Camera.X, pos.Y - Radius - global.Camera.Y, 1);
             GL.Vertex3(pos.X - global.Camera.X, pos.Y + Radius - global.Camera.Y, 1);

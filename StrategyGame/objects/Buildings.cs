@@ -30,8 +30,9 @@ namespace StrategyGame.objects
         public Factory(float x, float y) : base(x, y)
         {
         }
-        public override void Update(float delta)
+        public override bool Update(float delta)
         {
+            return isAlive;
         }
     }
 

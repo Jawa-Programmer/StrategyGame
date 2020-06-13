@@ -9,6 +9,10 @@ namespace StrategyGame.objects
     /// </summary>
     abstract class GameObject
     {
+        /// <summary>Флаг состояния жизни. True, если предмет "жив" и false, если уже "умер". "Мертвые" объекты при первой же попытки обработки удаляются из списков игровых объектов.</summary>
+        protected bool isAlive = true;
+        /// <summary>Флаг состояния жизни. True, если предмет "жив" и false, если уже "умер". "Мертвые" объекты при первой же попытки обработки удаляются из списков игровых объектов.</summary>
+        public bool IsAlive { get { return isAlive; } }
         /// <summary> Координаты объекта </summary>
         protected vector2f pos;
         /// <summary> Координаты объекта </summary>
@@ -26,9 +30,11 @@ namespace StrategyGame.objects
         /// <summary>
         /// обработка поведения объекта
         /// параметром передается прошедшее с прошлой обработки время
+        /// возвращает флаг состояния (если объект уже "мертв", будет возвращен false)
         /// </summary>
         /// <param name="delta">Время в секундах, прошедшее с прошлой итерации обновления объектов (используется для подсчета перемещения по формуле r = v * t)</param>
-        public abstract void Update(float delta);
+        /// <returns>Флаг состояния жизни (true, если продолжает жить и false, если умер)</returns>
+        public abstract bool Update(float delta);
     }
     /// <summary>
     /// абстрактный класс объекта, способного передвигаться.

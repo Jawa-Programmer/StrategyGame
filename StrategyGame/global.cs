@@ -1,4 +1,6 @@
-﻿using System;
+﻿using StrategyGame.objects;
+using System;
+using System.Collections.Generic;
 
 namespace StrategyGame
 {
@@ -55,5 +57,9 @@ namespace StrategyGame
         /// <param name="b">вектор координат второй точки</param>
         /// <returns>расстояние между точками</returns>
         public static float Hypot(vector2f a, vector2f b) { return (a - b).Length; }
+        /// <summary>
+        /// коллекция всех игровых объектов, которые требуют отрисовки и обработки поведения
+        /// </summary>
+        public static List<GameObject> gameojects = new List<GameObject>();
     }
 }

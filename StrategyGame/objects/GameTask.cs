@@ -24,29 +24,32 @@ namespace StrategyGame.objects
             ABORTED
         };
         /// <summary>
-        /// указатель на юнита, который выполняет задачу
+        /// Флаг того, что задача успела устареть. Устанавливается после инициализации задачи, но до начала ее фактического исполнения.
+        /// (например, пока задача ожидала освобождения юнита, цель задачи была уничтожена)
         /// </summary>
-        protected Unit executer;
-        /// <summary>
-        /// конструктор. Параметром передается юнит, который будет исполнять задачу
-        /// </summary>
-        /// <param name="ex">Юнит, который будет исполнять задачу</param>
-        public GameTask(Unit ex) { executer = ex; }
+        protected bool IsDepeart = false;
         /// <summary>
         /// список подзадач.
         /// </summary>
         protected Queue<GameTask> tasks;
         /// <summary>
+        /// Выполняет проверку актуальность цели задачи. Если в ходе проверки будет установлено, что продолжение задачи не имеет смысла, ближайший следующий вызов proceed завершится прерыванием задачи.
+        /// Возвращает true, если задача устарела и будет прервана. Возвращает false, если задача все еще актуальна и будет выполнятся.
+        /// </summary>
+        public virtual bool CheckTargets() { return IsDepeart; }
+        /// <summary>
         /// Метод выполнения задачи. Если задача не является атомарной, она просто передает управление текущей подзадаче и обробатывает ее ответ. Если задача атомарная, то метод манипулирует игровыми объектами напрямую. Возвращает статус задачи.
         /// </summary>
+        /// <param name="executer">юнит, выполняющий данную задачу</param>
         /// <param name="dt">Время в секундах, прошедшее с прошлой итерации обновления объектов (используется для подсчета перемещения по формуле r = v * t)</param>
         /// <returns>Если все подзадачи выполнены, то возвращает FINISHED, если еще есть невыполненые подзадачи, то возвращает PROCEED. Если продолжение выполнения задачи невозможно, возвращается ABORTED</returns>
-        public virtual TaskStatus proceed(float dt)
+        public virtual TaskStatus proceed(float dt, Unit executer)
         {
+            if (IsDepeart) return TaskStatus.ABORTED;
             if (tasks.Count > 0)
             {
                 GameTask ts = tasks.Peek();
-                TaskStatus status = ts.proceed(dt);
+                TaskStatus status = ts.proceed(dt, executer);
                 switch (status)
                 {
                     case TaskStatus.FINISHED:
@@ -71,10 +74,9 @@ namespace StrategyGame.objects
         /// <summary>
         /// Конструктор задачи. В качестве параметров передается сущность, выполняющая задачу и позиция, куда она должна прибыть.
         /// </summary>
-        /// <param name="ex">юнит, выполняющий данную задачу</param>
         /// <param name="tX">X координата целевой позиции</param>
         /// <param name="tY">Y координата целевой позиции</param>
-        public GoToTask(Unit ex, float tX, float tY) : base(ex)
+        public GoToTask(float tX, float tY) : base()
         {
             TARGET_POS.X = tX;
             TARGET_POS.Y = tY;
@@ -85,12 +87,12 @@ namespace StrategyGame.objects
         /// </summary>
         /// <param name="ex">юнит, выполняющий данную задачу</param>
         /// <param name="tar">вектор с координатами целевой позиции</param>
-        public GoToTask(Unit ex, vector2f tar) : base(ex)
+        public GoToTask(vector2f tar) : base()
         {
             TARGET_POS = tar;
             tasks = null;
         }
-        public override TaskStatus proceed(float dt)
+        public override TaskStatus proceed(float dt, Unit executer)
         {
             if (global.Hypot(executer.Position, TARGET_POS) <= executer.Speed * dt)
             {
@@ -113,12 +115,12 @@ namespace StrategyGame.objects
         /// </summary>
         /// <param name="ex">юнит, выполняющий данную задачу</param>
         /// <param name="pos">массив векторов-координат точек, по которым пройдет юнит</param>
-        public GoByPathTask(Unit ex, vector2f[] pos) : base(ex)
+        public GoByPathTask(vector2f[] pos) : base()
         {
             tasks = new Queue<GameTask>(pos.Length);
             for (int i = 0; i < pos.Length; i++)
             {
-                tasks.Enqueue(new GoToTask(ex, pos[i]));
+                tasks.Enqueue(new GoToTask(pos[i]));
             }
         }
         /// <summary>
@@ -126,12 +128,12 @@ namespace StrategyGame.objects
         /// </summary>
         /// <param name="ex">юнит, выполняющий данную задачу</param>
         /// <param name="pos">массив координт точек, по которым пройдет юнит. Массив должен быть вида {x1,y1,x2,y2,x3,y3...}</param>
-        public GoByPathTask(Unit ex, float[] pos) : base(ex)
+        public GoByPathTask(float[] pos) : base()
         {
             tasks = new Queue<GameTask>(pos.Length);
             for (int i = 0; i < pos.Length - 1; i += 2)
             {
-                tasks.Enqueue(new GoToTask(ex, pos[i], pos[i + 1]));
+                tasks.Enqueue(new GoToTask(pos[i], pos[i + 1]));
             }
         }
     }
@@ -144,11 +146,11 @@ namespace StrategyGame.objects
     sealed class TakeItem : GameTask
     {
         Item target;
-        public TakeItem(Unit ex, Item tar) : base(ex)
+        public TakeItem(Item tar) : base()
         {
             target = tar;
         }
-        public override TaskStatus proceed(float dt)
+        public override TaskStatus proceed(float dt, Unit executer)
         {
             if (global.Hypot(executer.Position, target.Position) < 5) { executer.TakeItem(target); return TaskStatus.FINISHED; }
             return TaskStatus.ABORTED;
@@ -162,34 +164,37 @@ namespace StrategyGame.objects
     sealed class DropItem : GameTask
     {
         bool IgnoreAboart;
-        public DropItem(Unit ex, bool ignoreAboat = true) : base(ex)
+        public DropItem(bool ignoreAboat = true) : base()
         {
             IgnoreAboart = ignoreAboat;
         }
-        public override TaskStatus proceed(float dt)
+        public override TaskStatus proceed(float dt, Unit executer)
         {
-            if (executer.IsTakedItem) { if (global.Hypot(executer.Position, executer.TakenItem.Position) < 7) 
-                { 
-                    executer.DropItem(); 
-                    return TaskStatus.FINISHED; } }
+            if (executer.IsTakedItem)
+            {
+                if (global.Hypot(executer.Position, executer.TakenItem.Position) < 7)
+                {
+                    executer.DropItem();
+                    return TaskStatus.FINISHED;
+                }
+            }
             else if (IgnoreAboart) return TaskStatus.FINISHED;
             else return TaskStatus.ABORTED;
             return TaskStatus.PROCEED;
         }
     }
-
-    sealed class TestTask : GameTask
+    /// <summary>
+    /// задача юнита: отнести указанный предмет на указанную фабрику
+    /// </summary>
+    sealed class MoveItemToBuilding : GameTask
     {
-
-        public TestTask(Unit ex, Item item) : base(ex)
+        public MoveItemToBuilding(Item it, Buildings fc) : base()
         {
             tasks = new Queue<GameTask>();
-            tasks.Enqueue(new GoToTask(ex, item.Position));
-            tasks.Enqueue(new TakeItem(ex, item));
-            tasks.Enqueue(new GoToTask(ex, 200, 300));
-            tasks.Enqueue(new DropItem(ex));
-            tasks.Enqueue(new GoToTask(ex, 200, 200));
-
+            tasks.Enqueue(new GoToTask(it.Position));
+            tasks.Enqueue(new TakeItem(it));
+            tasks.Enqueue(new GoToTask(fc.Position));
+            tasks.Enqueue(new DropItem(false));
         }
     }
 }

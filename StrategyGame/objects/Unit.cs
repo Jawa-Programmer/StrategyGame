@@ -1,5 +1,6 @@
 ﻿using OpenTK.Graphics.OpenGL;
 using System;
+using System.Collections.Generic;
 
 namespace StrategyGame.objects
 {
@@ -7,8 +8,17 @@ namespace StrategyGame.objects
     /// <summary>класс юнита без специализации.</summary>
     class Unit : MoveableGameObject
     {
-        protected GameTask activeTask;
-        public GameTask ActiveTask { get { return activeTask; } set { activeTask = value; } }
+        protected Queue<GameTask> activeTasks = new Queue<GameTask>();
+        /// <summary>
+        /// Активная задача. Этой свойство возвращает текущую активную задачу. 
+        /// Но обратите внимание, при попытке установить новую задачу в это свойство, задача не заменить текущую активную задачу, а добавится в конец очереди задач данного юнита. 
+        /// Будьте внимательны в этом моменте.
+        /// </summary>
+        public GameTask ActiveTask { get { return activeTasks.Peek(); } set { activeTasks.Enqueue(value); } }
+        /// <summary>
+        /// Возврощает количество задач, запланированных данным юнитом.
+        /// </summary>
+        public int CountOfPlannedTasks { get { return activeTasks.Count; } }
         /// <summary> мера сытости данного юнита. Если становится равна нулю, то юнит умирает.</summary>
         protected float hungry = 100f;
         /// <summary> мера сытости данного юнита (от 0f до 100f) Если становится равна нулю, то юнит умирает.</summary>
@@ -33,7 +43,7 @@ namespace StrategyGame.objects
         /// <summary>
         /// Занят ли сейчас юнит. True, если имеется активная задача
         /// </summary>
-        public bool IsBusy { get { return activeTask != null; } }
+        public bool IsBusy { get { return activeTasks.Count > 0; } }
         /// <summary>
         /// Несёт ли юнит предмет. True, если юнит несёт предмет прямо сейчас
         /// </summary>
@@ -75,15 +85,22 @@ namespace StrategyGame.objects
             }
         }
 
-        public override void Update(float delta)
+        public override bool Update(float delta)
         {
-            if (activeTask != null)
+            if (hungry <= 0) isAlive = false;
+            if (!isAlive) return false;
+            if (IsBusy)
             {
-                GameTask.TaskStatus status = activeTask.proceed(delta);
-                if (status == GameTask.TaskStatus.FINISHED || status == GameTask.TaskStatus.ABORTED) activeTask = null;
+                GameTask.TaskStatus status = activeTasks.Peek().proceed(delta, this);
+                if (status == GameTask.TaskStatus.FINISHED || status == GameTask.TaskStatus.ABORTED)
+                {
+                    activeTasks.Dequeue();
+                    if (activeTasks.Count > 0) activeTasks.Peek().CheckTargets(); //перед началом исполнения следующей задачи, проверяем, актуальна ли она.
+                }
             }
             pos.X += speed * direction.X * delta;
             pos.Y += speed * direction.Y * delta;
+            return isAlive;
         }
     }
 }
